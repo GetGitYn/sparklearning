@@ -1,0 +1,6 @@
+使用 Case Class 转换的 RDD 和 Dataset 的区别是什么？
+不同之处在于，虽然它们可以执行同样的功能，但是 Dataset 可以利用结构化 API 提供的丰富功能和优化，
+无需选择是在 JVM 类型还是 Spark 类型上进行操作。你可以采用其中最简单或最灵活的方式，
+这样就有了两全其美之法。
+
+DataFrame API 中没有检查点（checkpointing）这个概念
