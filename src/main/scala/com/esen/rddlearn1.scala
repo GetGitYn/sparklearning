@@ -21,13 +21,14 @@ import scala.util.Random
   *
   * testFile  读取文件，将文件内容转为rdd,文件每行一个row 对象  paramter:文件路径
   * wholeTextFiles  读取文件转成rdd,rdd 内容为 <文件名对象，字符串对象(文件内容)> paramter:文件路径
-  *  filter  根据特定条件过滤数据集，true or false    paramter: f: T => Boolean
+  *  filter  根据特定条件过滤数据集，true or false    paramter: f: T => Boolean 按照分区数进行
   *  distinct 去重  无参
   *   map 对输入数据集中的每一条记录执行转换方法返回一个新的rdd  paramter:f: T => U
   *   flatmap 返回一个 TraversableOnce 对象，`Iterator` and `Traversable 公共特性和方法 paramter:f: T => TraversableOnce[U]
   *   sortBy  获取到rdd中的某个值，对该值进行排序，返回对该值排序后的rdd   paramter:  f: (T) => K ,排序key 方法，升序还是降序，分区
   *   默认升序，创建一个k,v 二元组之后进行排序 分区好像没区别
   *   randomsplit 将一个rdd 切分为多个，返回一个包含rdd的数组
+ *   groupBy :不建议使用，内里使用的还是groupByKey ,
   *
   *   action 算子：
   *   reduce : 将rdd 中任何类型的值规约为一个值 参数： f(a T,b T)=>T
@@ -48,8 +49,7 @@ import scala.util.Random
  * * pipe :利用管道技术，将分区中的数据作为管道的数据，以管道的输出的每一行作为分区的每一个元素，空分区也会调用外部进程
  * * mapPartition: 参数：函数 f Iteror[U]=>Iteror[U] 每次处理一个分区的数据 map实际为mapPartition 基于行操作的情况
  * * 我们能按照每个分区进行操作，处理单元为整个分区。在 RDD 的整个子数据集上执
- * * 行某些操作很有用，你可以将属于某类的值收集到一个分区中，或分组到一个分区上，然后对
- * * 整个分组进行操作
+ * * 行某些操作很有用，你可以将属于某类的值收集到一个分区中，或分组到一个分区上，然后对整个分组进行操作
  * *
  * * mapPartitIonWithIndex:参数：index ：分区索引，分区数据迭代器  标志数据集中每条数据的位置
  * * foreachPartition :迭代所有分区数据，适合数据库写入
@@ -64,7 +64,7 @@ object rddlearn1 {
     sparkSession.range(10).rdd.flatMap(a=>Seq.apply(a*10)).foreach(a=>{print(a.toString);printf("aaa")})
     val myCollection = "Spark The Definitive Guide : Big Data Processing Made Simple"
       .split(" ")
-    sparkContext.wholeTextFiles("G:\\learningproject\\data\\bike-data\\201508_station_data.csv").foreach(s=>printf(s._1.concat(s._2.toString)))
+    sparkContext.wholeTextFiles("G:\\Spark-The-Definitive-Guide-master\\Spark-The-Definitive-Guide-master\\data\\bike-data\\201508_station_data.csv").foreach(s=>printf(s._1.concat(s._2.toString)))
     sparkContext.parallelize(myCollection,2).sortBy(s=>s).collect().foreach(s=>print(s))
     sparkContext.parallelize(myCollection,1).sortBy(s=>s).collect().foreach(s=>print(s))
    val testrdd=sparkContext.parallelize(myCollection,1);
@@ -72,16 +72,18 @@ object rddlearn1 {
 
     val words: RDD[String] = sparkSession.sparkContext.makeRDD(myCollection)
     val value: RDD[String] = sparkSession.sparkContext.parallelize(myCollection,2)
-    words.first()
-    value.first()
+    println(words.first())
+    println(value.first())
     words.take(5)
+    // 返回一个string 数组
     words.takeOrdered(5)
-    words.top(5)
-    words.saveAsTextFile("")
-    words.saveAsObjectFile("")
+    words.top(5).foreach(s=>println(s))
+    //words.saveAsTextFile("")
+    //words.saveAsObjectFile("")
+    //这个算子用出错了，再看
     words.pipe("sed -i 's#spark#hhh#g'").collect()
-    words.mapPartitions(s=>Iterator[Int](1))
-
+    words.mapPartitions(s=>Iterator[Int](1)).foreachPartition(s=>println(s))
+    val value1: RDD[(Array[Char], Iterable[String])] = words.groupBy(s => s.toCharArray)
     value.foreachPartition(iter=>{
       val i = new Random().nextInt()
       val writer = new PrintWriter(new File(s"/tmp/random-file-${i}.txt"))

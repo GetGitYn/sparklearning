@@ -4,3 +4,43 @@
 这样就有了两全其美之法。
 
 DataFrame API 中没有检查点（checkpointing）这个概念
+reduceByKey:对于数据会首先在mapper 里面进行本地的combiner,最后拉取到reducer 里面进行reduce
+
+implict ：
+rdd->pairrdd
+首先rdd必须是RDD[(K, V)], 即pairRDD类型
+需要在使用这些函数的前面Import org.apache.spark.SparkContext._;否则就会报函数不存在的错误 ?
+
+
+PairRDDFunctions[K, V](self: RDD[(K, V)])
+    (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null)
+
+(self: RDD[(K, V)])
+表明 PairRDDFunctions 的传入类型可以为k-v 类型 RDD
+ (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null)
+implicit关键字的一个用法，隐式参数。在函数中使用到kt这个对象时，scala会找到对应的ClassTag对象，也就是kt注入到函数中
+
+eg.
+scala> implicit val x:Int=100
+x: Int = 100
+
+scala> def add(g:Int)(implicit t:Int)=t+g
+add: (g: Int)(implicit t: Int)Int
+
+scala> add(1)
+res2: Int = 101
+
+隐式转换只关心类型，在当需要进行类型转换时，会去寻找伴生对象，隐式类等作用域的方法，如果里面包含两个传入参数与返回参数类型相同的函数时会产生二义性错误
+
+
+自定义分区的唯一目标是将数据均匀地分布到整个集群中，以避免诸如数据倾斜之类的问题
+要执行自定义分区，你需要实现Partitioner的子类
+
+
+
+api 查询操作步骤：
+编写sql
+spark 转换sql 到逻辑执行计划（LogicalPlan）
+spark 转化LogicalPlan -》Physical plan (物理执行计划)，检查可行的优化策略，检查优化
+spark 在集群上执行物理执行计划 （rdd 转化）
+
