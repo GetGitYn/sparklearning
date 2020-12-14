@@ -46,22 +46,44 @@ import org.apache.spark.sql.functions._
  *
  *
  * seq[Row].toDF //对null 的处理一般，生产中不使用
- *createTempView ：临时视图
+ * createTempView ：临时视图
  * createGlobalTempView：全局视图，可在多个sparksession 之间共享
  *
  * 处理列/表达式：select 重载   参数：str/column对象
+ * 查询列：
  * select("列名1","列名2")
  * 处理字符串表达式：selectExpr
  * 前两者支持再df 上进行sql
  * org.apache.spark.sql.functions 函数方法
  * expr:把表达式转化成代表的列的操作，返回jizhcolum
- *selectExpr == select(expr()) : select的变种 ，接收一组sql 表达式，sql 表达式可以使用系统预定义的聚合函数
+ * selectExpr == select(expr()) : select的变种 ，接收一组sql 表达式，sql 表达式可以使用系统预定义的聚合函数
  * 不包含任何聚合操作的有效sql
+ *
+ *
+ * 添加列：
  * lit: 创建一个列使用字面量 ，返回值column
- *withColumn:添加或者替换同名列的值  允许使用保留字创建列名
+ * withColumn:添加或者替换同名列的值  允许使用保留字创建列名
+ * 修改列：
  * withColumnRename:重命名列
+ * drop:删除列 ，参数：string* ,column
+ * 更改列类型：withColumn("colmn",Column.cast("other Type"))
+ *
+ * 行：
+ * 过滤行：创建表达式，根据表达式结果过滤结果为false 的行
+ * df.where（表达式/列）
+ * df.filter（表达式/列）
+ *
+ *行去重：distinct 是dropDuplicates 的别名
+ *追加行：dataframe 不可变 ，
+ * 追加行只能通过联合两个dataframe union 操作，两个 dataframe 应该具有相同的模式 联合操作是基于位置而不是基于数据模式schema执行
+ *
+ * 行排序：
+ * sort/order by  参数：列名字符串或者列表达式或者多个列 默认升序
+ *
  * 保留字与关键字：
  * 保留字：列名中包含空格或者连字符等保留字符  使用反引号（`）
+ *  spark 默认不区分大小写，通过设置spark.sql("set spark.sql.caseSensitiv=true") 设置
+ *  sample:随机抽样 按照一定比例从frame 中抽取数据 参数：withreplacement true 有放回，false 无放回
  *
  *
  *
@@ -84,10 +106,10 @@ object DataFrameLearn {
 
     val structType: StructType = StructType(Array(
       StructField("field1", StringType),
-      StructField("field2", IntegerType),
-      StructField("field3", LongType)))
+      StructField("field2", StringType),
+      StructField("field3", IntegerType)))
 
-    val row: Row = Row("aa", 1, 2L)
+    val row: Row = Row("aa", "bb", 2)
     //方式一：
     val value: RDD[Row] = session.sparkContext.parallelize(Seq(row))
     val frame1: DataFrame = session.createDataFrame(value, structType)
@@ -108,8 +130,9 @@ object DataFrameLearn {
      *  ORIGIN_COUNTRY_NAME: string (nullable = true)
      *  count: long (nullable = true)
      */
-    frame.printSchema()
+    //frame.printSchema()
     // 错误会出错，没有分组函数,
+    //session.sql("select avg(count),count(distinct(DEST_COUNTRY_NAME)) from dfTable ").show()
     /*frame.selectExpr("avg(count)","count(distinct(DEST_COUNTRY_NAME))","(DEST_COUNTRY_NAME=ORIGIN_COUNTRY_NAME) as country").show()
     //添加列：lit  withcolumn
     frame.select(expr("*"),lit(1)).show()
@@ -121,10 +144,40 @@ object DataFrameLearn {
     frame.withColumnRenamed("count","count1")*/
     //引用带有保留字或者关键字的列
 
-    val frame2: DataFrame = frame.withColumn("number_One", lit(1))
+   /* val frame2: DataFrame = frame.withColumn("number_One", lit(1))
       frame2.selectExpr("`number_One`").show(2)
       frame2.select(expr("number_One")).show(2)
-      frame2.select(col("number_One")).show(2)
+      frame2.select(col("number_One")).show(2)*/
+
+    frame.selectExpr("COUNT").show(2)
+    // 区分大小写
+   // session.sql("set spark.sql.caseSensitive=true");
+
+   // frame.selectExpr("COUNT").show(2)
+
+    //删除列
+    frame.drop("DEST_COUNTRY_NAME").show()
+    //更改列类型 （强制类型转换） int to long cast column 类方法 ：实现column 的转换  可转换
+    // string, boolean, byte, short, int, long, float, double, decimal, date, timestamp
+    frame.withColumn("count2",col("count").cast("long"))
+
+    //行操作：
+    //过滤行
+    /*frame.where(col("count")>2).show()
+    frame.where("count>2").show()
+    frame.filter("count<2").show()
+    frame.filter(col("count")<2).show()*/
+
+    //去除重复行 如果设置大小写敏感，这个表名会找不到，不知道为啥 ,结果得出来20个1 很奇怪
+  session.sql("select  count(distinct(ORIGIN_COUNTRY_NAME,DEST_COUNTRY_NAME)) from dfTable").show()
+  //frame.selectExpr("ORIGIN_COUNTRY_NAME", "DEST_COUNTRY_NAME").distinct().count()
+    println(frame.dropDuplicates("ORIGIN_COUNTRY_NAME", "DEST_COUNTRY_NAME").count()+"aa")
+    frame.union(frame1).show()
+  //行排序
+    frame.orderBy("count").show(5)
+    //不能这样写
+    frame.sort("count asc","ORIGIN_COUNTRY_NAME desc").show(5)
+
 
 
   }
