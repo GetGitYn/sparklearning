@@ -44,3 +44,6 @@ spark 转换sql 到逻辑执行计划（LogicalPlan）
 spark 转化LogicalPlan -》Physical plan (物理执行计划)，检查可行的优化策略，检查优化
 spark 在集群上执行物理执行计划 （rdd 转化）
 
+dataframe 如何分区，spark 分区规则 待研究
+
+

@@ -52,6 +52,7 @@ import org.apache.spark.sql.functions._
  * 处理列/表达式：select 重载   参数：str/column对象
  * 查询列：
  * select("列名1","列名2")
+ * df("columnname")
  * 处理字符串表达式：selectExpr
  * 前两者支持再df 上进行sql
  * org.apache.spark.sql.functions 函数方法
@@ -79,6 +80,24 @@ import org.apache.spark.sql.functions._
  *
  * 行排序：
  * sort/order by  参数：列名字符串或者列表达式或者多个列 默认升序
+ * df.sort(expr("count asc"))
+ * 指定空值在排序列表中的位置
+ * null 排在最前面：
+ * asc_nulls_first
+ * desc_nulss_first
+ * null 排在最后面
+ * asc_nulls_last
+ * desc_nulls_last
+ *
+ * 处于性能考虑，在进行别的转换之前，先在每个分区内部进行排序
+ * sortWithinPartitions: 参数：string* column* 实现分区排序
+ * limit:提取前几条数据
+ *
+ * 重分区： 根据经常过滤的列对数据进行分区 重分区导致shuffle
+ * 经常根据某一列进行过滤时：
+ * repartition(col("columnname"))
+ *repartition :参数：分区数，列
+ *
  *
  * 保留字与关键字：
  * 保留字：列名中包含空格或者连字符等保留字符  使用反引号（`）
@@ -149,17 +168,17 @@ object DataFrameLearn {
       frame2.select(expr("number_One")).show(2)
       frame2.select(col("number_One")).show(2)*/
 
-    frame.selectExpr("COUNT").show(2)
-    // 区分大小写
-   // session.sql("set spark.sql.caseSensitive=true");
+ /*   frame.selectExpr("COUNT").show(2)
+     区分大小写
+    session.sql("set spark.sql.caseSensitive=true");
 
-   // frame.selectExpr("COUNT").show(2)
+    frame.selectExpr("COUNT").show(2)*/
 
     //删除列
-    frame.drop("DEST_COUNTRY_NAME").show()
+   // frame.drop("DEST_COUNTRY_NAME").show()
     //更改列类型 （强制类型转换） int to long cast column 类方法 ：实现column 的转换  可转换
     // string, boolean, byte, short, int, long, float, double, decimal, date, timestamp
-    frame.withColumn("count2",col("count").cast("long"))
+    frame.withColumn("count2",col("count").cast("long")).show(2)
 
     //行操作：
     //过滤行
@@ -169,14 +188,37 @@ object DataFrameLearn {
     frame.filter(col("count")<2).show()*/
 
     //去除重复行 如果设置大小写敏感，这个表名会找不到，不知道为啥 ,结果得出来20个1 很奇怪
-  session.sql("select  count(distinct(ORIGIN_COUNTRY_NAME,DEST_COUNTRY_NAME)) from dfTable").show()
+  /*  session.sql("select  count(distinct(ORIGIN_COUNTRY_NAME,DEST_COUNTRY_NAME)) from dfTable").show()
   //frame.selectExpr("ORIGIN_COUNTRY_NAME", "DEST_COUNTRY_NAME").distinct().count()
     println(frame.dropDuplicates("ORIGIN_COUNTRY_NAME", "DEST_COUNTRY_NAME").count()+"aa")
     frame.union(frame1).show()
-  //行排序
-    frame.orderBy("count").show(5)
-    //不能这样写
-    frame.sort("count asc","ORIGIN_COUNTRY_NAME desc").show(5)
+     //行排序
+    frame.orderBy("count").show(5)*/
+    //不能这样写  不认识
+    //frame.sort("count asc","ORIGIN_COUNTRY_NAME desc").show(5)
+    frame.orderBy(expr("count desc")).show()
+    frame.orderBy(col("count").desc,col("DEST_COUNTRY_NAME").asc).show()
+    //df("columnname")=col("columnname")
+    //frame.sort(frame("count").asc)
+    session.sql("select * from dfTable order by count desc,DEST_COUNTRY_NAME asc").show()
+
+    //指定null 位置
+    frame.sort(col("count").asc_nulls_first)
+    //分区排序 实现与hive sql 中sortby 排序相同的功能
+    frame.sortWithinPartitions("count")
+    //重分区
+    println(frame.rdd.getNumPartitions)
+
+    //重点：dataframe 如何分区，spark 分区规则 待研究
+    //frame.repartition(col("DEST_COUNTRY_NAME"))
+    frame.repartition(5,col("DEST_COUNTRY_NAME")).explain()
+
+    frame.repartition(5,col("DEST_COUNTRY_NAME")).coalesce(2).explain()
+
+    //驱动器收集数据到本地，当数据量很大的时候会导致驱动器崩溃
+    //frame.collect()
+    //将每个分区的数据返回给驱动器并一串行 的方式迭代 消耗巨大内存
+    //frame.toLocalIterator()
 
 
 
