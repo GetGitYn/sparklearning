@@ -108,7 +108,10 @@ import org.apache.spark.sql.functions._
  *
  *
  */
+
+
 object DataFrameLearn {
+
 
   def main(args: Array[String]): Unit = {
     import org.apache.spark.sql.types._
@@ -219,6 +222,8 @@ object DataFrameLearn {
     //frame.collect()
     //将每个分区的数据返回给驱动器并一串行 的方式迭代 消耗巨大内存
     //frame.toLocalIterator()
+
+
 
 
 
