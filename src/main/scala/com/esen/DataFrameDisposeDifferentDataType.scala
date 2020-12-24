@@ -354,9 +354,10 @@ object DataFrameDisposeDifferentDataType {
      */
 
     val function2: UserDefinedFunction = udf(power3(_: Double), DoubleType)
+   // session.udf.register("")
     frame.select(function2(col("InvoiceNo").cast(DoubleType))).show(2)
     session.udf.register("power3",power3(_:Double):Double)
-    session.sql("select function2(cast (InvoiceNo as double)) from dfTable").show(2)
+    session.sql("select power3(cast (InvoiceNo as double)) from dfTable").show(2)
 
 
 
